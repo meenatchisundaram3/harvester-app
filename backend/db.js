@@ -46,6 +46,7 @@ export async function initDb() {
 
   // Seed default owner account if empty
   await seedOwnerAccount();
+  await seedVehicles();
 }
 
 function setupSQLite() {
@@ -542,8 +543,49 @@ async function seedOwnerAccount() {
     
     await execute(
       'INSERT INTO owner (username, password_hash, name, email) VALUES (?, ?, ?, ?)',
-      [username, passHash, 'Harvester Owner', 'owner@harvester.com']
+      [username, passHash, 'Sivakozhundhu', 'sivakozhundhu@harvester.com']
     );
-    console.log(`Default owner account created! Username: "${username}", Password: "${rawPass}"`);
+    console.log(`Owner account initialized for Sivakozhundhu!`);
+  }
+}
+
+// Seed Official Fleet Vehicles from RC Certificates
+async function seedVehicles() {
+  const vehicles = [
+    {
+      id: 'TN32BF8500',
+      name: 'Case IH Austoft 4010 Maxx (TN 32 BF 8500)',
+      model: 'CASE IH AUSTOFT 4010 MAXX',
+      serial_number: 'PNEY4010LR2EB0435',
+      purchase_date: '2024-07-05',
+      status: 'Active'
+    },
+    {
+      id: 'TN32BF8451',
+      name: 'New Holland 3630 TX Tractor (TN 32 BF 8451)',
+      model: 'NH 3630 TX A1',
+      serial_number: 'NHN36300ZRC686589',
+      purchase_date: '2024-07-05',
+      status: 'Active'
+    },
+    {
+      id: 'TN32BF8438',
+      name: 'New Holland 3630 TX Tractor (TN 32 BF 8438)',
+      model: 'NH 3630 TX A1',
+      serial_number: 'NHN36300ZRC686593',
+      purchase_date: '2024-07-05',
+      status: 'Active'
+    }
+  ];
+
+  for (const v of vehicles) {
+    const exists = await query('SELECT id FROM harvesters WHERE id = ?', [v.id]);
+    if (exists.length === 0) {
+      await execute(
+        'INSERT INTO harvesters (id, name, model, serial_number, purchase_date, status) VALUES (?, ?, ?, ?, ?, ?)',
+        [v.id, v.name, v.model, v.serial_number, v.purchase_date, v.status]
+      );
+      console.log(`Vehicle registered: ${v.name}`);
+    }
   }
 }

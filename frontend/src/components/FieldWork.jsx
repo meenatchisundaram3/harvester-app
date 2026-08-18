@@ -40,11 +40,16 @@ export default function FieldWork() {
 
   const preseedHarvestersIfEmpty = async () => {
     const list = await db.harvesters.toArray();
-    if (list.length === 0) {
-      const h1 = { id: generateUUID(), name: 'Harvester John Deere A1', model: 'CH330', serial_number: 'JD987654', purchase_date: '2025-01-10', status: 'Active', updated_at: new Date().toISOString() };
-      const h2 = { id: generateUUID(), name: 'Harvester Shaktiman B2', model: '3737', serial_number: 'SK321098', purchase_date: '2025-06-15', status: 'Active', updated_at: new Date().toISOString() };
-      await db.harvesters.put(h1);
-      await db.harvesters.put(h2);
+    const defaultFleet = [
+      { id: 'TN32BF8500', name: 'Case IH Austoft 4010 Maxx (TN 32 BF 8500)', model: 'CASE IH AUSTOFT 4010 MAXX', serial_number: 'PNEY4010LR2EB0435', purchase_date: '2024-07-05', status: 'Active', updated_at: new Date().toISOString() },
+      { id: 'TN32BF8451', name: 'New Holland 3630 TX Tractor (TN 32 BF 8451)', model: 'NH 3630 TX A1', serial_number: 'NHN36300ZRC686589', purchase_date: '2024-07-05', status: 'Active', updated_at: new Date().toISOString() },
+      { id: 'TN32BF8438', name: 'New Holland 3630 TX Tractor (TN 32 BF 8438)', model: 'NH 3630 TX A1', serial_number: 'NHN36300ZRC686593', purchase_date: '2024-07-05', status: 'Active', updated_at: new Date().toISOString() }
+    ];
+    for (const veh of defaultFleet) {
+      const exists = await db.harvesters.get(veh.id);
+      if (!exists) {
+        await db.harvesters.put(veh);
+      }
     }
   };
 

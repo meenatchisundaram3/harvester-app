@@ -221,10 +221,10 @@ export default function App() {
 
         <div className="sidebar-footer">
           <div className="user-info">
-            <div className="user-avatar">O</div>
+            <div className="user-avatar">S</div>
             <div className="user-details">
-              <span className="user-name">Owner</span>
-              <span className="user-role">Single-Owner Private App</span>
+              <span className="user-name">Sivakozhundhu</span>
+              <span className="user-role">Valaiyampattu, Villupuram</span>
             </div>
           </div>
         </div>
