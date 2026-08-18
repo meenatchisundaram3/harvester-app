@@ -127,16 +127,33 @@ export default function App() {
 
   return (
     <div className="app-container">
+      {/* Mobile Drawer Backdrop */}
+      <div 
+        className={`sidebar-backdrop ${isMobileMenuOpen ? 'visible' : ''}`}
+        onClick={() => setIsMobileMenuOpen(false)}
+      />
+
       {/* Sidebar Navigation */}
       <aside className={`sidebar ${isMobileMenuOpen ? 'mobile-open' : ''}`}>
-        <div className="logo-container">
-          <div className="logo-img">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36">
-              <circle cx="12" cy="12" r="11" fill="#40916c" />
-              <path d="M12 4 C15 7, 18 12, 17 18 C15 17, 13 14, 12 11 C11 14, 9 17, 7 18 C6 12, 9 7, 12 4 Z" fill="#d8f3dc" />
-            </svg>
+        <div className="logo-container" style={{ justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <div className="logo-img">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="36" height="36">
+                <circle cx="12" cy="12" r="11" fill="#40916c" />
+                <path d="M12 4 C15 7, 18 12, 17 18 C15 17, 13 14, 12 11 C11 14, 9 17, 7 18 C6 12, 9 7, 12 4 Z" fill="#d8f3dc" />
+              </svg>
+            </div>
+            <span className="logo-text">Harvester Owner</span>
           </div>
-          <span className="logo-text">Harvester Owner</span>
+
+          {/* Close button for mobile drawer */}
+          <button 
+            className="sidebar-close-btn"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-label="Close menu"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
         </div>
 
         <ul className="nav-links">
@@ -226,14 +243,14 @@ export default function App() {
         {/* Header Bar */}
         <header className="top-bar">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button className="menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            <button className="menu-btn" onClick={() => setIsMobileMenuOpen(true)} aria-label="Open menu">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
             </button>
             <div className="page-title-container">
               <h2 className="page-title" style={{ textTransform: 'capitalize' }}>
                 {activeTab === 'fieldwork' ? 'Daily Field Work' : activeTab === 'runninghours' ? 'Machine Hours' : activeTab === 'payments' ? 'Mill Payments' : activeTab}
               </h2>
-              <span className="page-subtitle">Sugarcane Harvester Management System</span>
+              <span className="page-subtitle">Sugarcane Harvester Management</span>
             </div>
           </div>
 
@@ -266,6 +283,45 @@ export default function App() {
           setTimeout(() => setActiveTab(currentTab), 10);
         }} />
       </main>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <nav className="bottom-nav">
+        <button 
+          className={`bottom-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+          onClick={() => setActiveTab('dashboard')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          <span>Home</span>
+        </button>
+        <button 
+          className={`bottom-nav-item ${activeTab === 'fieldwork' ? 'active' : ''}`}
+          onClick={() => setActiveTab('fieldwork')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+          <span>Field Work</span>
+        </button>
+        <button 
+          className={`bottom-nav-item ${activeTab === 'diesel' ? 'active' : ''}`}
+          onClick={() => setActiveTab('diesel')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 2v20M21 21v-4a4 4 0 0 0-3-3.87M16 2v4M6 14h10M6 18h10M6 10h10" /></svg>
+          <span>Diesel</span>
+        </button>
+        <button 
+          className={`bottom-nav-item ${activeTab === 'payments' ? 'active' : ''}`}
+          onClick={() => setActiveTab('payments')}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M12 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 8c3 0 5-1.5 5-3H7c0 1.5 2 3 5 3z"/></svg>
+          <span>Payments</span>
+        </button>
+        <button 
+          className="bottom-nav-item"
+          onClick={() => setIsMobileMenuOpen(true)}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          <span>Menu</span>
+        </button>
+      </nav>
 
       {/* Embedded pulses animations */}
       <style>{`
