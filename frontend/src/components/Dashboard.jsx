@@ -26,6 +26,7 @@ export default function Dashboard() {
   });
 
   const [activeNotification, setActiveNotification] = useState(null);
+  const [fleetList, setFleetList] = useState([]);
 
   useEffect(() => {
     loadDashboardData();
@@ -92,7 +93,11 @@ export default function Dashboard() {
       netProfit: netProfitToday
     });
 
-    // 9. Load notification alerts (like pending engine maintenance or expiring insurance)
+    // 9. Load fleet vehicles
+    const harvs = await db.harvesters.toArray();
+    setFleetList(harvs);
+
+    // 10. Load notification alerts (like pending engine maintenance or expiring insurance)
     const unreadAlerts = await db.notifications
       .filter(n => !n.is_read)
       .toArray();
@@ -282,6 +287,66 @@ export default function Dashboard() {
             {formatCurrency(stats.netProfit)}
           </div>
           <div className="stat-footer">Daily revenue balance</div>
+        </div>
+      </div>
+
+      {/* Registered Fleet & Machinery Cards */}
+      <div className="content-card" style={{ marginBottom: '2rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--primary-dark)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              🚜 Registered Fleet & Machinery (3 Vehicles)
+            </h3>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+              Owner: <strong>Sivakozhundhu</strong> (s/o Karthikeyan) • Valaiyampattu, Villupuram (TN32)
+            </span>
+          </div>
+          <span className="badge badge-success" style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem' }}>
+            SBI ADB Financed Fleet
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '1rem' }}>
+          {fleetList.map((veh) => {
+            const isHarvester = veh.vehicle_type?.toLowerCase().includes('harvester') || veh.name?.toLowerCase().includes('case') || veh.name?.toLowerCase().includes('harvester');
+            return (
+              <div 
+                key={veh.id} 
+                style={{ 
+                  backgroundColor: 'var(--bg-app)', 
+                  border: '1px solid var(--border-color)', 
+                  borderRadius: 'var(--radius-md)', 
+                  padding: '1rem',
+                  borderLeft: `4px solid ${isHarvester ? 'var(--success)' : '#3182ce'}`
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <div style={{ fontWeight: '700', fontSize: '0.9375rem', color: 'var(--text-main)' }}>
+                    {veh.name}
+                  </div>
+                  <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
+                    {veh.status || 'Active'}
+                  </span>
+                </div>
+
+                {/* Plate */}
+                <div style={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.35rem 0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-muted)' }}>IND</span>
+                  <span style={{ fontWeight: '800', fontFamily: 'monospace', letterSpacing: '0.05em' }}>
+                    {veh.reg_number || veh.id}
+                  </span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>TN32</span>
+                </div>
+
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem' }}>
+                  <div>Model: <strong style={{ color: 'var(--text-main)' }}>{veh.model || 'CNH'}</strong></div>
+                  <div>Power: <strong style={{ color: 'var(--text-main)' }}>{veh.hp || 'Diesel'}</strong></div>
+                  <div style={{ gridColumn: 'span 2' }}>Chassis: <strong style={{ color: 'var(--text-main)', fontFamily: 'monospace' }}>{veh.chassis_number || 'PNEY4010LR2EB0435'}</strong></div>
+                  <div style={{ gridColumn: 'span 2' }}>Engine: <strong style={{ color: 'var(--text-main)', fontFamily: 'monospace' }}>{veh.engine_number || '002165114'}</strong></div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 

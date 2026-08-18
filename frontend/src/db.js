@@ -6,7 +6,7 @@ export const db = new Dexie('HarvesterOwnerDB');
 // Declare local IndexedDB structure
 db.version(1).stores({
   operators: 'id, name, mobile, status, updated_at',
-  harvesters: 'id, name, status, updated_at',
+  harvesters: 'id, name, reg_number, status, updated_at',
   attendance: 'id, date, operator_id, status, updated_at',
   field_work: 'id, date, village, farmer_name, harvester_id, operator_id, updated_at',
   diesel_refills: 'id, date, harvester_id, operator_id, updated_at',
@@ -18,6 +18,75 @@ db.version(1).stores({
   notifications: 'id, type, is_read, updated_at',
   outbox: '++id, table, action, recordId, timestamp' // Stores operations to sync to server
 });
+
+export const OFFICIAL_FLEET = [
+  {
+    id: 'TN32BF8500',
+    name: 'Case IH Austoft 4010 Maxx (TN 32 BF 8500)',
+    reg_number: 'TN 32 BF 8500',
+    vehicle_type: 'Sugarcane Harvester',
+    maker: 'CNH INDUSTRIAL (INDIA) PVT LTD',
+    model: 'CASE IH AUSTOFT 4010 MAXX',
+    chassis_number: 'PNEY4010LR2EB0435',
+    engine_number: '002165114',
+    purchase_date: '2024-07-05',
+    validity_date: '2039-07-04',
+    fuel_type: 'DIESEL (TREM STAGE V)',
+    owner_name: 'SIVAKOZHUNDHU (s/o KARTHIKEYAN)',
+    financer: 'STATE BANK OF INDIA ADB',
+    rto: 'TN32 VILLUPURAM RTO',
+    hp: '175.54 HP',
+    status: 'Active',
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 'TN32BF8451',
+    name: 'New Holland 3630 TX Tractor (TN 32 BF 8451)',
+    reg_number: 'TN 32 BF 8451',
+    vehicle_type: 'Agricultural Tractor',
+    maker: 'CNH INDUSTRIAL (INDIA) PVT LTD',
+    model: 'NH 3630 TX A1',
+    chassis_number: 'NHN36300ZRC686589',
+    engine_number: '437447DX',
+    purchase_date: '2024-07-05',
+    validity_date: '2039-07-04',
+    fuel_type: 'DIESEL',
+    owner_name: 'SIVAKOZHUNDHU (s/o KARTHIKEYAN)',
+    financer: 'STATE BANK OF INDIA ADB',
+    rto: 'TN32 VILLUPURAM RTO',
+    hp: '49.5 HP',
+    status: 'Active',
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 'TN32BF8438',
+    name: 'New Holland 3630 TX Tractor (TN 32 BF 8438)',
+    reg_number: 'TN 32 BF 8438',
+    vehicle_type: 'Agricultural Tractor',
+    maker: 'CNH INDUSTRIAL (INDIA) PVT LTD',
+    model: 'NH 3630 TX A1',
+    chassis_number: 'NHN36300ZRC686593',
+    engine_number: '437551DX',
+    purchase_date: '2024-07-05',
+    validity_date: '2039-07-04',
+    fuel_type: 'DIESEL',
+    owner_name: 'SIVAKOZHUNDHU (s/o KARTHIKEYAN)',
+    financer: 'STATE BANK OF INDIA ADB',
+    rto: 'TN32 VILLUPURAM RTO',
+    hp: '49.5 HP',
+    status: 'Active',
+    updated_at: new Date().toISOString()
+  }
+];
+
+export async function ensureOfficialFleetSeeded() {
+  for (const veh of OFFICIAL_FLEET) {
+    await db.harvesters.put(veh);
+  }
+}
+
+// Auto-seed official fleet immediately
+ensureOfficialFleetSeeded().catch(console.error);
 
 // Helper: Queue operations in outbox for background sync
 export async function queueSyncAction(table, action, recordId, data = null) {
