@@ -1,4 +1,4 @@
-const CACHE_NAME = 'harvester-owner-cache-v1';
+const CACHE_NAME = 'harvester-owner-cache-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
