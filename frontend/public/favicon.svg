@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="64" height="64">
+  <circle cx="12" cy="12" r="11" fill="#1b4332" stroke="#40916c" stroke-width="1.5" />
+  <!-- Sugarcane Leaf symbol -->
+  <path d="M12 4 C15 7, 18 12, 17 18 C15 17, 13 14, 12 11 C11 14, 9 17, 7 18 C6 12, 9 7, 12 4 Z" fill="#74c69d" />
+  <path d="M12 4 L12 20" stroke="#2d6a4f" stroke-width="1" stroke-linecap="round" />
+</svg>

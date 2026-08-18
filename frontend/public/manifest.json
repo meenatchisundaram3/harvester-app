@@ -1,0 +1,17 @@
+{
+  "short_name": "Harvester Owner",
+  "name": "Harvester Owner Sugarcane Harvester Management System",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "48x48 72x72 96x96 128x128 192x192 256x256 512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#081c15",
+  "theme_color": "#1b4332",
+  "display": "standalone",
+  "orientation": "portrait-primary"
+}
