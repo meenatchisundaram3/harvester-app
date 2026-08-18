@@ -554,7 +554,7 @@ async function seedVehicles() {
   const vehicles = [
     {
       id: 'TN32BF8500',
-      name: 'Case IH Austoft 4010 Maxx (TN 32 BF 8500)',
+      name: 'Harvester - Case IH Austoft 4010 Maxx (TN 32 BF 8500)',
       model: 'CASE IH AUSTOFT 4010 MAXX',
       serial_number: 'PNEY4010LR2EB0435',
       purchase_date: '2024-07-05',
@@ -562,7 +562,7 @@ async function seedVehicles() {
     },
     {
       id: 'TN32BF8451',
-      name: 'New Holland 3630 TX Tractor (TN 32 BF 8451)',
+      name: 'Infielder 1 - New Holland 3630 TX (TN 32 BF 8451)',
       model: 'NH 3630 TX A1',
       serial_number: 'NHN36300ZRC686589',
       purchase_date: '2024-07-05',
@@ -570,13 +570,16 @@ async function seedVehicles() {
     },
     {
       id: 'TN32BF8438',
-      name: 'New Holland 3630 TX Tractor (TN 32 BF 8438)',
+      name: 'Infielder 2 - New Holland 3630 TX (TN 32 BF 8438)',
       model: 'NH 3630 TX A1',
       serial_number: 'NHN36300ZRC686593',
       purchase_date: '2024-07-05',
       status: 'Active'
     }
   ];
+
+  // Remove any legacy dummy harvesters
+  await execute("DELETE FROM harvesters WHERE id NOT IN ('TN32BF8500', 'TN32BF8451', 'TN32BF8438')");
 
   for (const v of vehicles) {
     const exists = await query('SELECT id FROM harvesters WHERE id = ?', [v.id]);
@@ -585,7 +588,11 @@ async function seedVehicles() {
         'INSERT INTO harvesters (id, name, model, serial_number, purchase_date, status) VALUES (?, ?, ?, ?, ?, ?)',
         [v.id, v.name, v.model, v.serial_number, v.purchase_date, v.status]
       );
-      console.log(`Vehicle registered: ${v.name}`);
+    } else {
+      await execute(
+        'UPDATE harvesters SET name = ?, model = ?, serial_number = ?, purchase_date = ?, status = ? WHERE id = ?',
+        [v.name, v.model, v.serial_number, v.purchase_date, v.status, v.id]
+      );
     }
   }
 }

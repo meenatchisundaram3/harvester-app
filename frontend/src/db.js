@@ -22,7 +22,7 @@ db.version(1).stores({
 export const OFFICIAL_FLEET = [
   {
     id: 'TN32BF8500',
-    name: 'Case IH Austoft 4010 Maxx (TN 32 BF 8500)',
+    name: 'Harvester - Case IH Austoft 4010 Maxx (TN 32 BF 8500)',
     reg_number: 'TN 32 BF 8500',
     vehicle_type: 'Sugarcane Harvester',
     maker: 'CNH INDUSTRIAL (INDIA) PVT LTD',
@@ -41,9 +41,9 @@ export const OFFICIAL_FLEET = [
   },
   {
     id: 'TN32BF8451',
-    name: 'New Holland 3630 TX Tractor (TN 32 BF 8451)',
+    name: 'Infielder 1 - New Holland 3630 TX (TN 32 BF 8451)',
     reg_number: 'TN 32 BF 8451',
-    vehicle_type: 'Agricultural Tractor',
+    vehicle_type: 'Infield Tractor',
     maker: 'CNH INDUSTRIAL (INDIA) PVT LTD',
     model: 'NH 3630 TX A1',
     chassis_number: 'NHN36300ZRC686589',
@@ -60,9 +60,9 @@ export const OFFICIAL_FLEET = [
   },
   {
     id: 'TN32BF8438',
-    name: 'New Holland 3630 TX Tractor (TN 32 BF 8438)',
+    name: 'Infielder 2 - New Holland 3630 TX (TN 32 BF 8438)',
     reg_number: 'TN 32 BF 8438',
-    vehicle_type: 'Agricultural Tractor',
+    vehicle_type: 'Infield Tractor',
     maker: 'CNH INDUSTRIAL (INDIA) PVT LTD',
     model: 'NH 3630 TX A1',
     chassis_number: 'NHN36300ZRC686593',
@@ -80,6 +80,13 @@ export const OFFICIAL_FLEET = [
 ];
 
 export async function ensureOfficialFleetSeeded() {
+  const validIds = ['TN32BF8500', 'TN32BF8451', 'TN32BF8438'];
+  const allCurrent = await db.harvesters.toArray();
+  for (const item of allCurrent) {
+    if (!validIds.includes(item.id)) {
+      await db.harvesters.delete(item.id);
+    }
+  }
   for (const veh of OFFICIAL_FLEET) {
     await db.harvesters.put(veh);
   }
