@@ -79,6 +79,54 @@ export const OFFICIAL_FLEET = [
   }
 ];
 
+export const DEFAULT_CREW = [
+  {
+    id: 'OP-HARVESTER-1',
+    name: 'Harvester Operator (Pilot)',
+    role: 'Harvester Operator',
+    assigned_vehicle: 'TN32BF8500',
+    mobile: '9876543210',
+    joining_date: '2024-07-05',
+    salary_type: 'Monthly',
+    salary_amount: 35000,
+    status: 'Active',
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 'OP-INFIELDER-1',
+    name: 'Infielder 1 Operator',
+    role: 'Infielder 1 Operator',
+    assigned_vehicle: 'TN32BF8451',
+    mobile: '9876543211',
+    joining_date: '2024-07-05',
+    salary_type: 'Monthly',
+    salary_amount: 22000,
+    status: 'Active',
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: 'OP-INFIELDER-2',
+    name: 'Infielder 2 Operator',
+    role: 'Infielder 2 Operator',
+    assigned_vehicle: 'TN32BF8438',
+    mobile: '9876543212',
+    joining_date: '2024-07-05',
+    salary_type: 'Monthly',
+    salary_amount: 22000,
+    status: 'Active',
+    updated_at: new Date().toISOString()
+  }
+];
+
+export async function ensureDefaultCrewSeeded() {
+  const count = await db.operators.count();
+  if (count === 0) {
+    for (const op of DEFAULT_CREW) {
+      await db.operators.put(op);
+    }
+  }
+}
+
 export async function ensureOfficialFleetSeeded() {
   const validIds = ['TN32BF8500', 'TN32BF8451', 'TN32BF8438'];
   const allCurrent = await db.harvesters.toArray();
@@ -92,8 +140,9 @@ export async function ensureOfficialFleetSeeded() {
   }
 }
 
-// Auto-seed official fleet immediately
+// Auto-seed official fleet & crew immediately
 ensureOfficialFleetSeeded().catch(console.error);
+ensureDefaultCrewSeeded().catch(console.error);
 
 // Helper: Queue operations in outbox for background sync
 export async function queueSyncAction(table, action, recordId, data = null) {

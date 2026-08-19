@@ -274,8 +274,8 @@ export default function Reports() {
       headers = [['Date', 'Farmer/Village', 'Harvester', 'Operator', 'Hours', 'Tons', 'Productivity', 'Gross Income']];
       rows = reportData.map(r => [formatDate(r.date), `${r.farmer} (${r.village})`, r.harvester, r.operator, `${r.running}h`, `${r.tons}t`, `${r.productivity} t/h`, formatCurrency(r.income)]);
     } else if (reportType === 'Payment') {
-      headers = [['Date', 'Mill Name', 'Farmer', 'Tons', 'Gross Amount', 'Advance', 'Balance', 'Status']];
-      rows = reportData.map(r => [formatDate(r.date), r.mill, r.farmer, `${r.tons}t`, formatCurrency(r.gross), formatCurrency(r.advance), formatCurrency(r.balance), r.status]);
+      headers = [['Date', 'Mill Name', 'Farmer (Village)', 'Tons', 'Billed Amount', 'Settled Amount', 'Balance Due', 'Status']];
+      rows = reportData.map(r => [formatDate(r.date), r.mill, `${r.farmer} (${r.village})`, r.tons ? `${r.tons}t` : '—', formatCurrency(r.gross), formatCurrency(r.advance), formatCurrency(r.balance), r.status]);
     } else if (reportType === 'Expense') {
       headers = [['Date', 'Category', 'Notes', 'Amount']];
       rows = reportData.map(r => [formatDate(r.date), r.category, r.notes, formatCurrency(r.amount)]);
@@ -543,10 +543,10 @@ export default function Reports() {
                 <tr>
                   <th>Date</th>
                   <th>Mill / Farmer</th>
-                  <th>Tons Billed</th>
-                  <th>Gross Amount</th>
-                  <th>Advance</th>
-                  <th>Outstanding</th>
+                  <th>Tons Logged</th>
+                  <th>Billed Amount (₹)</th>
+                  <th>Settled Amount (₹)</th>
+                  <th>Balance Due (₹)</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -558,22 +558,22 @@ export default function Reports() {
                       <div style={{ fontWeight: '600' }}>{r.mill}</div>
                       <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Farmer: {r.farmer} ({r.village})</div>
                     </td>
-                    <td>{r.tons} t</td>
+                    <td>{r.tons ? `${r.tons} t` : '—'}</td>
                     <td style={{ fontWeight: '600' }}>{formatCurrency(r.gross)}</td>
-                    <td style={{ color: 'var(--primary-light)' }}>{formatCurrency(r.advance)}</td>
+                    <td style={{ color: 'var(--success)', fontWeight: '600' }}>{formatCurrency(r.advance)}</td>
                     <td style={{ fontWeight: '700', color: r.balance > 0 ? 'var(--warning)' : 'var(--success)' }}>{formatCurrency(r.balance)}</td>
                     <td>
                       <span className={`badge ${r.status === 'Paid' ? 'badge-success' : r.status === 'Partial' ? 'badge-warning' : 'badge-pending'}`}>
-                        {r.status}
+                        {r.status === 'Paid' ? 'Settled' : r.status === 'Partial' ? 'Partial Settled' : 'Pending'}
                       </span>
                     </td>
                   </tr>
                 ))}
                 {reportData.length > 0 && (
                   <tr style={{ fontWeight: 'bold', background: 'rgba(0,0,0,0.02)' }}>
-                    <td colSpan="3">Gross Summary Totals:</td>
+                    <td colSpan="3">Total Summary (Amount Basis):</td>
                     <td style={{ color: 'var(--text-main)' }}>{formatCurrency(reportTotals.gross)}</td>
-                    <td style={{ color: 'var(--primary-light)' }}>{formatCurrency(reportTotals.advance)}</td>
+                    <td style={{ color: 'var(--success)' }}>{formatCurrency(reportTotals.advance)}</td>
                     <td style={{ color: 'var(--warning)' }}>{formatCurrency(reportTotals.balance)}</td>
                     <td></td>
                   </tr>
