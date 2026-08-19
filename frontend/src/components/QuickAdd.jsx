@@ -176,9 +176,14 @@ export default function QuickAdd({ onSaveSuccess }) {
 
     await localDb.saveFieldWork(record);
 
-    // Auto log payment invoice
+    // Auto log/sync payment invoice
+    const paymentId = `pay-${record.id}`;
+    const existingPayment = await db.payments.get(paymentId);
+    const existingAdvance = existingPayment ? (parseFloat(existingPayment.advance) || 0) : 0;
+    const newBalance = Math.max(0, calculatedIncome - existingAdvance);
+
     const paymentRecord = {
-      id: `pay-${record.id}`,
+      id: paymentId,
       mill_name: record.sugar_mill || 'Private Sugar Mill',
       date: record.date,
       farmer: record.farmer_name,
@@ -186,10 +191,12 @@ export default function QuickAdd({ onSaveSuccess }) {
       tons: record.tons_harvested,
       rate_per_ton: record.rate_per_ton,
       gross_amount: calculatedIncome,
-      advance: 0,
-      balance: calculatedIncome,
-      payment_date: '',
-      status: 'Pending'
+      advance: existingAdvance,
+      balance: newBalance,
+      payment_date: existingPayment?.payment_date || '',
+      payment_mode: existingPayment?.payment_mode || 'Bank Transfer / NEFT',
+      reference_no: existingPayment?.reference_no || '',
+      status: newBalance <= 0 && calculatedIncome > 0 ? 'Paid' : (existingAdvance > 0 ? 'Partial' : 'Pending')
     };
     await localDb.savePayment(paymentRecord);
 

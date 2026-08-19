@@ -105,6 +105,11 @@ export default function FieldWork() {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to delete this field work entry?')) {
       await localDb.deleteFieldWork(id);
+      const paymentId = `pay-${id}`;
+      const exists = await db.payments.get(paymentId);
+      if (exists) {
+        await localDb.deletePayment(paymentId);
+      }
       loadData();
     }
   };
@@ -150,8 +155,12 @@ export default function FieldWork() {
 
     await localDb.saveFieldWork(record);
     
-    // Also dynamically record this transaction as potential income under Payments invoices automatically!
+    // Also dynamically synchronize this transaction under Payments invoices!
     const paymentId = `pay-${record.id}`;
+    const existingPayment = await db.payments.get(paymentId);
+    const existingAdvance = existingPayment ? (parseFloat(existingPayment.advance) || 0) : 0;
+    const newBalance = Math.max(0, calculatedIncome - existingAdvance);
+
     const paymentRecord = {
       id: paymentId,
       mill_name: record.sugar_mill || 'Private Sugar Mill',
@@ -161,10 +170,12 @@ export default function FieldWork() {
       tons: record.tons_harvested,
       rate_per_ton: record.rate_per_ton,
       gross_amount: calculatedIncome,
-      advance: 0,
-      balance: calculatedIncome,
-      payment_date: '',
-      status: 'Pending'
+      advance: existingAdvance,
+      balance: newBalance,
+      payment_date: existingPayment?.payment_date || '',
+      payment_mode: existingPayment?.payment_mode || 'Bank Transfer / NEFT',
+      reference_no: existingPayment?.reference_no || '',
+      status: newBalance <= 0 && calculatedIncome > 0 ? 'Paid' : (existingAdvance > 0 ? 'Partial' : 'Pending')
     };
     await localDb.savePayment(paymentRecord);
 
