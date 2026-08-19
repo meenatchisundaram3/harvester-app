@@ -250,18 +250,29 @@ router.post('/sync/push', authenticateToken, async (req, res) => {
 
         // Clean dates/booleans/numbers
         // SQLite uses strings for DATETIME and sets values properly.
-        // Let's check if the record already exists
-        const existing = await query(`SELECT id FROM ${table} WHERE id = ?`, [recordId]);
-        
         // Exclude updated_at from data to let DB auto-update or set it ourselves
         // We'll set updated_at manually to ensure consistency
         recordData.updated_at = new Date().toISOString().replace('T', ' ').substring(0, 19);
         
+        // Fetch existing table columns in SQLite to prevent "no column named xyz" errors
+        const tableCols = await query(`PRAGMA table_info(${table})`);
+        const validColNames = tableCols.map(c => c.name);
+
+        // Filter recordData to only columns that exist in the database table
+        const cleanData = {};
+        for (const k of Object.keys(recordData)) {
+          if (validColNames.length === 0 || validColNames.includes(k)) {
+            cleanData[k] = recordData[k];
+          }
+        }
+
+        const existing = await query(`SELECT id FROM ${table} WHERE id = ?`, [recordId]);
+
         if (existing.length > 0) {
           // UPDATE
-          const keys = Object.keys(recordData).filter(k => k !== 'id' && k !== 'created_at');
+          const keys = Object.keys(cleanData).filter(k => k !== 'id' && k !== 'created_at');
           const setClause = keys.map(k => `${k} = ?`).join(', ');
-          const values = keys.map(k => recordData[k]);
+          const values = keys.map(k => cleanData[k]);
           
           const sql = `UPDATE ${table} SET ${setClause} WHERE id = ?`;
           await execute(sql, [...values, recordId]);
@@ -269,13 +280,13 @@ router.post('/sync/push', authenticateToken, async (req, res) => {
         } else {
           // INSERT
           // Ensure created_at exists
-          if (!recordData.created_at) {
-            recordData.created_at = new Date().toISOString().replace('T', ' ').substring(0, 19);
+          if (!cleanData.created_at) {
+            cleanData.created_at = new Date().toISOString().replace('T', ' ').substring(0, 19);
           }
-          const keys = Object.keys(recordData);
+          const keys = Object.keys(cleanData);
           const placeholders = keys.map(() => '?').join(', ');
           const columns = keys.join(', ');
-          const values = keys.map(k => recordData[k]);
+          const values = keys.map(k => cleanData[k]);
           
           const sql = `INSERT INTO ${table} (${columns}) VALUES (${placeholders})`;
           await execute(sql, values);

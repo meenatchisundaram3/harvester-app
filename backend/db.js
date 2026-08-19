@@ -530,6 +530,22 @@ function createSQLiteSchema() {
   for (const tableQuery of tables) {
     sqliteDb.exec(tableQuery);
   }
+
+  // Column migrations for SQLite tables
+  const migrations = [
+    `ALTER TABLE payments ADD COLUMN payment_mode TEXT;`,
+    `ALTER TABLE payments ADD COLUMN reference_no TEXT;`,
+    `ALTER TABLE operators ADD COLUMN role TEXT;`,
+    `ALTER TABLE operators ADD COLUMN assigned_vehicle TEXT;`,
+    `ALTER TABLE expenses ADD COLUMN payment_mode TEXT;`
+  ];
+  for (const m of migrations) {
+    try {
+      sqliteDb.exec(m);
+    } catch (e) {
+      // Column already exists or table not ready, ignore
+    }
+  }
 }
 
 // Seed Initial Owner Account
