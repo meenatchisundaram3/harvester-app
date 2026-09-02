@@ -127,6 +127,19 @@ export async function ensureDefaultCrewSeeded() {
   }
 }
 
+export async function ensureOfficialFleetSeeded() {
+  const validIds = ['TN32BF8500', 'TN32BF8451', 'TN32BF8438'];
+  const allCurrent = await db.harvesters.toArray();
+  for (const item of allCurrent) {
+    if (!validIds.includes(item.id)) {
+      await db.harvesters.delete(item.id);
+    }
+  }
+  for (const veh of OFFICIAL_FLEET) {
+    await db.harvesters.put(veh);
+  }
+}
+
 export const BANNARI_SUGARS_STATEMENTS = [
   {
     id: 'stmt-bannari-348-39',
