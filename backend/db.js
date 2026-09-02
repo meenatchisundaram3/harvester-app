@@ -535,6 +535,14 @@ function createSQLiteSchema() {
   const migrations = [
     `ALTER TABLE payments ADD COLUMN payment_mode TEXT;`,
     `ALTER TABLE payments ADD COLUMN reference_no TEXT;`,
+    `ALTER TABLE payments ADD COLUMN bill_no TEXT;`,
+    `ALTER TABLE payments ADD COLUMN division TEXT;`,
+    `ALTER TABLE payments ADD COLUMN period_from TEXT;`,
+    `ALTER TABLE payments ADD COLUMN period_to TEXT;`,
+    `ALTER TABLE payments ADD COLUMN deductions REAL DEFAULT 0.00;`,
+    `ALTER TABLE payments ADD COLUMN net_payable REAL DEFAULT 0.00;`,
+    `ALTER TABLE payments ADD COLUMN bank_details TEXT;`,
+    `ALTER TABLE payments ADD COLUMN items TEXT;`,
     `ALTER TABLE operators ADD COLUMN role TEXT;`,
     `ALTER TABLE operators ADD COLUMN assigned_vehicle TEXT;`,
     `ALTER TABLE expenses ADD COLUMN payment_mode TEXT;`

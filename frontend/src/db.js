@@ -127,22 +127,148 @@ export async function ensureDefaultCrewSeeded() {
   }
 }
 
-export async function ensureOfficialFleetSeeded() {
-  const validIds = ['TN32BF8500', 'TN32BF8451', 'TN32BF8438'];
-  const allCurrent = await db.harvesters.toArray();
-  for (const item of allCurrent) {
-    if (!validIds.includes(item.id)) {
-      await db.harvesters.delete(item.id);
-    }
+export const BANNARI_SUGARS_STATEMENTS = [
+  {
+    id: 'stmt-bannari-348-39',
+    bill_no: '348/39',
+    mill_name: 'Bannari Amman Sugars Limited, Tirukoilur',
+    division: 'ANDAMPALLAM',
+    gang_leader_no: 'H038',
+    gang_leader_name: 'SIVAKOZHUNDHU',
+    date: '2026-07-31',
+    period_from: '2026-07-23',
+    period_to: '2026-07-31',
+    rate_per_ton: 600,
+    tons: 59.615,
+    gross_amount: 35769.00,
+    deductions: 20272.00,
+    net_payable: 15497.00,
+    advance: 15497.00,
+    balance: 0.00,
+    status: 'Paid',
+    bank_details: 'SBI0005-42805345508',
+    payment_mode: 'Received Payment thru Bank (SBI)',
+    payment_date: '2026-07-31',
+    farmer: 'SADIYANDI C, BHARATHI E (3 Cuts)',
+    items: [
+      { s_no: 1, r_no: '050309', p_no: 'MPU0111', farmer: 'SADIYANDI C', div: '010', date: '2026-07-30', rate: 600, tons: 16.540, amount: 9924.00 },
+      { s_no: 2, r_no: '050309', p_no: 'MPU0111', farmer: 'SADIYANDI C', div: '010', date: '2026-07-30', rate: 600, tons: 21.870, amount: 13122.00 },
+      { s_no: 3, r_no: '084378', p_no: 'MPU0110', farmer: 'BHARATHI E', div: '010', date: '2026-07-31', rate: 600, tons: 21.205, amount: 12723.00 }
+    ]
+  },
+  {
+    id: 'stmt-bannari-370-40',
+    bill_no: '370/40',
+    mill_name: 'Bannari Amman Sugars Limited, Tirukoilur',
+    division: 'ANDAMPALLAM',
+    gang_leader_no: 'H038',
+    gang_leader_name: 'SIVAKOZHUNDHU',
+    date: '2026-08-07',
+    period_from: '2026-08-01',
+    period_to: '2026-08-07',
+    rate_per_ton: 600,
+    tons: 125.335,
+    gross_amount: 75201.00,
+    deductions: 40544.00,
+    net_payable: 34657.00,
+    advance: 34657.00,
+    balance: 0.00,
+    status: 'Paid',
+    bank_details: 'SBI0005-42805345508',
+    payment_mode: 'Received Payment thru Bank (SBI)',
+    payment_date: '2026-08-07',
+    farmer: 'SADIYANDI C, BHARATHI E, SELVI E, ILAYAPERUMAL R (7 Cuts)',
+    items: [
+      { s_no: 1, r_no: '050309', p_no: 'MPU0111', farmer: 'SADIYANDI C', div: '010', date: '2026-08-01', rate: 600, tons: 21.085, amount: 12651.00 },
+      { s_no: 2, r_no: '084378', p_no: 'MPU0110', farmer: 'BHARATHI E', div: '010', date: '2026-08-01', rate: 600, tons: 17.545, amount: 10527.00 },
+      { s_no: 3, r_no: '084330', p_no: 'MPU0124', farmer: 'SELVI E', div: '010', date: '2026-08-01', rate: 600, tons: 17.080, amount: 10248.00 },
+      { s_no: 4, r_no: '084330', p_no: 'MPU0124', farmer: 'SELVI E', div: '010', date: '2026-08-02', rate: 600, tons: 20.370, amount: 12222.00 },
+      { s_no: 5, r_no: '084297', p_no: 'MPU0108', farmer: 'ILAYAPERUMAL R', div: '010', date: '2026-08-02', rate: 600, tons: 7.590, amount: 4554.00 },
+      { s_no: 6, r_no: '084297', p_no: 'MPU0108', farmer: 'ILAYAPERUMAL R', div: '010', date: '2026-08-02', rate: 600, tons: 22.675, amount: 13605.00 },
+      { s_no: 7, r_no: '084297', p_no: 'MPU0108', farmer: 'ILAYAPERUMAL R', div: '010', date: '2026-08-05', rate: 600, tons: 18.990, amount: 11394.00 }
+    ]
+  },
+  {
+    id: 'stmt-bannari-392-36',
+    bill_no: '392/36',
+    mill_name: 'Bannari Amman Sugars Limited, Tirukoilur',
+    division: 'ANDAMPALLAM',
+    gang_leader_no: 'H038',
+    gang_leader_name: 'SIVAKOZHUNDHU',
+    date: '2026-08-15',
+    period_from: '2026-08-08',
+    period_to: '2026-08-15',
+    rate_per_ton: 600,
+    tons: 98.405,
+    gross_amount: 59043.00,
+    deductions: 20272.00,
+    net_payable: 38771.00,
+    advance: 38771.00,
+    balance: 0.00,
+    status: 'Paid',
+    bank_details: 'SBI0005-42805345508',
+    payment_mode: 'Received Payment thru Bank (SBI)',
+    payment_date: '2026-08-15',
+    farmer: 'GNANAVEL A, JAYARAMAN N (5 Cuts)',
+    items: [
+      { s_no: 1, r_no: '084345', p_no: 'MPU0160', farmer: 'GNANAVEL A', div: '010', date: '2026-08-10', rate: 600, tons: 23.140, amount: 13884.00 },
+      { s_no: 2, r_no: '084345', p_no: 'MPU0160', farmer: 'GNANAVEL A', div: '010', date: '2026-08-11', rate: 600, tons: 15.960, amount: 9576.00 },
+      { s_no: 3, r_no: '050169', p_no: 'MPU0152', farmer: 'JAYARAMAN N', div: '010', date: '2026-08-15', rate: 600, tons: 21.735, amount: 13041.00 },
+      { s_no: 4, r_no: '050169', p_no: 'MPU0152', farmer: 'JAYARAMAN N', div: '010', date: '2026-08-15', rate: 600, tons: 16.575, amount: 9945.00 },
+      { s_no: 5, r_no: '050169', p_no: 'MPU0152', farmer: 'JAYARAMAN N', div: '010', date: '2026-08-15', rate: 600, tons: 20.995, amount: 12597.00 }
+    ]
+  },
+  {
+    id: 'stmt-bannari-415-36',
+    bill_no: '415/36',
+    mill_name: 'Bannari Amman Sugars Limited, Tirukoilur',
+    division: 'ANDAMPALLAM',
+    gang_leader_no: 'H038',
+    gang_leader_name: 'SIVAKOZHUNDHU',
+    date: '2026-08-22',
+    period_from: '2026-08-16',
+    period_to: '2026-08-22',
+    rate_per_ton: 600,
+    tons: 183.675,
+    gross_amount: 110205.00,
+    deductions: 60816.00,
+    net_payable: 49389.00,
+    advance: 49389.00,
+    balance: 0.00,
+    status: 'Paid',
+    bank_details: 'SBI0005-42805345508',
+    payment_mode: 'Received Payment thru Bank (SBI)',
+    payment_date: '2026-08-22',
+    farmer: 'JAYARAMAN N, ILAYAPERUMAL G, GUNASEKARAN S (11 Cuts)',
+    items: [
+      { s_no: 1, r_no: '050169', p_no: 'MPU0152', farmer: 'JAYARAMAN N', div: '010', date: '2026-08-16', rate: 600, tons: 15.925, amount: 9555.00 },
+      { s_no: 2, r_no: '050169', p_no: 'MPU0152', farmer: 'JAYARAMAN N', div: '010', date: '2026-08-16', rate: 600, tons: 21.660, amount: 12996.00 },
+      { s_no: 3, r_no: '050169', p_no: 'MPU0152', farmer: 'JAYARAMAN N', div: '010', date: '2026-08-16', rate: 600, tons: 2.290, amount: 1374.00 },
+      { s_no: 4, r_no: '050045', p_no: 'MPU0109', farmer: 'ILAYAPERUMAL G', div: '010', date: '2026-08-18', rate: 600, tons: 16.965, amount: 10179.00 },
+      { s_no: 5, r_no: '050045', p_no: 'MPU0109', farmer: 'ILAYAPERUMAL G', div: '010', date: '2026-08-18', rate: 600, tons: 22.430, amount: 13458.00 },
+      { s_no: 6, r_no: '050045', p_no: 'MPU0109', farmer: 'ILAYAPERUMAL G', div: '010', date: '2026-08-19', rate: 600, tons: 16.865, amount: 10119.00 },
+      { s_no: 7, r_no: '050045', p_no: 'MPU0109', farmer: 'ILAYAPERUMAL G', div: '010', date: '2026-08-20', rate: 600, tons: 21.575, amount: 12945.00 },
+      { s_no: 8, r_no: '050045', p_no: 'MPU0109', farmer: 'ILAYAPERUMAL G', div: '010', date: '2026-08-21', rate: 600, tons: 16.685, amount: 10011.00 },
+      { s_no: 9, r_no: '050045', p_no: 'MPU0109', farmer: 'ILAYAPERUMAL G', div: '010', date: '2026-08-21', rate: 600, tons: 10.080, amount: 6048.00 },
+      { s_no: 10, r_no: '084392', p_no: 'MPU0149', farmer: 'GUNASEKARAN S', div: '010', date: '2026-08-22', rate: 600, tons: 22.120, amount: 13272.00 },
+      { s_no: 11, r_no: '084392', p_no: 'MPU0149', farmer: 'GUNASEKARAN S', div: '010', date: '2026-08-22', rate: 600, tons: 17.080, amount: 10248.00 }
+    ]
   }
-  for (const veh of OFFICIAL_FLEET) {
-    await db.harvesters.put(veh);
+];
+
+export async function ensureBannariStatementsSeeded() {
+  for (const stmt of BANNARI_SUGARS_STATEMENTS) {
+    const existing = await db.payments.get(stmt.id);
+    if (!existing) {
+      await db.payments.put(stmt);
+    }
   }
 }
 
-// Auto-seed official fleet & crew immediately
+// Auto-seed official fleet, crew, and Bannari Sugar Mill statements immediately
 ensureOfficialFleetSeeded().catch(console.error);
 ensureDefaultCrewSeeded().catch(console.error);
+ensureBannariStatementsSeeded().catch(console.error);
 
 // Helper: Queue operations in outbox for background sync
 export async function queueSyncAction(table, action, recordId, data = null) {
