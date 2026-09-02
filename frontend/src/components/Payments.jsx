@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, localDb, BANNARI_SUGARS_STATEMENTS } from '../db.js';
-import { generateUUID, formatDate, formatCurrency } from '../utils.js';
+import { generateUUID, formatDate, formatCurrency, fileToBase64 } from '../utils.js';
 
 export default function Payments() {
   const [payments, setPayments] = useState([]);
@@ -9,7 +9,9 @@ export default function Payments() {
   const [millFilter, setMillFilter] = useState('All');
   const [activeTab, setActiveTab] = useState('statements'); // 'statements' | 'all_cuts'
   const [showModal, setShowModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
   const [showStatementModal, setShowStatementModal] = useState(false);
+  const [statementViewMode, setStatementViewMode] = useState('digital'); // 'digital' | 'original'
   const [showSettleModal, setShowSettleModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   
@@ -27,7 +29,7 @@ export default function Payments() {
     period_from: '',
     period_to: '',
     farmer: '',
-    village: '',
+    village: 'Andampallam',
     tons: '',
     rate_per_ton: 600,
     gross_amount: '',
@@ -39,8 +41,31 @@ export default function Payments() {
     payment_mode: 'Received Payment thru Bank (SBI)',
     bank_details: 'SBI0005-42805345508',
     reference_no: '',
+    pdf_url: '',
+    pdf_name: '',
     status: 'Paid',
     items: []
+  });
+
+  const [uploadData, setUploadData] = useState({
+    file: null,
+    pdf_url: '',
+    pdf_name: '',
+    bill_no: '',
+    mill_name: 'Bannari Amman Sugars Limited, Tirukoilur',
+    division: 'ANDAMPALLAM',
+    gang_leader_no: 'H038',
+    gang_leader_name: 'SIVAKOZHUNDHU',
+    date: new Date().toISOString().split('T')[0],
+    period_from: new Date().toISOString().split('T')[0],
+    period_to: new Date().toISOString().split('T')[0],
+    tons: '',
+    rate_per_ton: 600,
+    gross_amount: '',
+    deductions: 0,
+    net_payable: '',
+    bank_details: 'SBI0005-42805345508',
+    notes: ''
   });
 
   const [settleData, setSettleData] = useState({
@@ -75,7 +100,7 @@ export default function Payments() {
   const totalSettled = payments.reduce((sum, p) => sum + (parseFloat(p.advance || p.net_payable) || 0), 0);
   const totalOutstanding = payments.reduce((sum, p) => sum + (parseFloat(p.balance) || 0), 0);
 
-  // Statements list (items with bill_no or multiple cuts) sorted in order Slip 1 -> Slip 4
+  // Statements list (items with bill_no or multiple cuts) sorted Slip 1 -> Slip 4
   const statementsList = payments.filter(p => p.bill_no || (p.items && p.items.length > 0));
   statementsList.sort((a, b) => new Date(a.period_from || a.date) - new Date(b.period_from || b.date));
   const individualInvoices = payments.filter(p => !p.bill_no && (!p.items || p.items.length === 0));
@@ -138,10 +163,37 @@ export default function Payments() {
       payment_mode: 'Received Payment thru Bank (SBI)',
       bank_details: 'SBI0005-42805345508',
       reference_no: '',
+      pdf_url: '',
+      pdf_name: '',
       status: 'Paid',
       items: []
     });
     setShowModal(true);
+  };
+
+  const handleOpenUpload = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    setUploadData({
+      file: null,
+      pdf_url: '',
+      pdf_name: '',
+      bill_no: '',
+      mill_name: 'Bannari Amman Sugars Limited, Tirukoilur',
+      division: 'ANDAMPALLAM',
+      gang_leader_no: 'H038',
+      gang_leader_name: 'SIVAKOZHUNDHU',
+      date: todayStr,
+      period_from: todayStr,
+      period_to: todayStr,
+      tons: '',
+      rate_per_ton: 600,
+      gross_amount: '',
+      deductions: 0,
+      net_payable: '',
+      bank_details: 'SBI0005-42805345508',
+      notes: ''
+    });
+    setShowUploadModal(true);
   };
 
   const handleOpenEdit = (p) => {
@@ -153,7 +205,9 @@ export default function Payments() {
       gang_leader_no: p.gang_leader_no || 'H038',
       gang_leader_name: p.gang_leader_name || 'SIVAKOZHUNDHU',
       bank_details: p.bank_details || 'SBI0005-42805345508',
-      payment_mode: p.payment_mode || 'Received Payment thru Bank (SBI)'
+      payment_mode: p.payment_mode || 'Received Payment thru Bank (SBI)',
+      pdf_url: p.pdf_url || '',
+      pdf_name: p.pdf_name || ''
     });
     setShowModal(true);
   };
@@ -185,6 +239,61 @@ export default function Payments() {
     }));
   };
 
+  const handleUploadCalcChange = (tonsVal, rateVal, dedVal) => {
+    const t = parseFloat(tonsVal) || 0;
+    const r = parseFloat(rateVal) || 600;
+    const d = parseFloat(dedVal) || 0;
+    const gross = parseFloat((t * r).toFixed(2));
+    const net = Math.max(0, parseFloat((gross - d).toFixed(2)));
+
+    setUploadData(prev => ({
+      ...prev,
+      tons: tonsVal,
+      rate_per_ton: rateVal,
+      gross_amount: gross,
+      deductions: dedVal,
+      net_payable: net
+    }));
+  };
+
+  // Handle PDF / file selection in Form
+  const handleFormPdfUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      try {
+        const base64 = await fileToBase64(file);
+        setFormData(prev => ({
+          ...prev,
+          pdf_url: base64,
+          pdf_name: file.name
+        }));
+      } catch (err) {
+        console.error('File reading failed:', err);
+        alert('Could not read selected document.');
+      }
+    }
+  };
+
+  // Handle PDF / file selection in Quick Upload Modal
+  const handleQuickPdfUpload = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      try {
+        const base64 = await fileToBase64(file);
+        setUploadData(prev => ({
+          ...prev,
+          file,
+          pdf_url: base64,
+          pdf_name: file.name,
+          bill_no: prev.bill_no || file.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_\-\/]/g, ' ')
+        }));
+      } catch (err) {
+        console.error('File reading failed:', err);
+        alert('Could not read uploaded file.');
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.mill_name || !formData.gross_amount) {
@@ -212,6 +321,49 @@ export default function Payments() {
 
     await localDb.savePayment(record);
     setShowModal(false);
+    loadPayments();
+  };
+
+  const handleUploadSubmit = async (e) => {
+    e.preventDefault();
+    if (!uploadData.bill_no) {
+      alert('Please enter a Bill Number for this statement.');
+      return;
+    }
+
+    const gross = parseFloat(uploadData.gross_amount) || 0;
+    const ded = parseFloat(uploadData.deductions) || 0;
+    const net = parseFloat(uploadData.net_payable) || Math.max(0, gross - ded);
+
+    const record = {
+      id: generateUUID(),
+      bill_no: uploadData.bill_no,
+      mill_name: uploadData.mill_name,
+      division: uploadData.division,
+      gang_leader_no: uploadData.gang_leader_no,
+      gang_leader_name: uploadData.gang_leader_name,
+      date: uploadData.date,
+      period_from: uploadData.period_from,
+      period_to: uploadData.period_to,
+      tons: parseFloat(uploadData.tons) || 0,
+      rate_per_ton: parseFloat(uploadData.rate_per_ton) || 600,
+      gross_amount: gross,
+      deductions: ded,
+      net_payable: net,
+      advance: net,
+      balance: 0,
+      payment_date: uploadData.date,
+      payment_mode: 'Received Payment thru Bank (SBI)',
+      bank_details: uploadData.bank_details,
+      pdf_url: uploadData.pdf_url,
+      pdf_name: uploadData.pdf_name,
+      status: 'Paid',
+      farmer: `Uploaded Statement: ${uploadData.bill_no}`,
+      items: []
+    };
+
+    await localDb.savePayment(record);
+    setShowUploadModal(false);
     loadPayments();
   };
 
@@ -258,25 +410,16 @@ export default function Payments() {
 
   const openStatement = (payment) => {
     setSelectedStatement(payment);
+    setStatementViewMode('digital');
     setShowStatementModal(true);
   };
 
-  // Filter payments
+  // Filter statements
   const filteredStatements = statementsList.filter(p => {
     const matchSearch = (p.farmer && p.farmer.toLowerCase().includes(search.toLowerCase())) ||
                         (p.mill_name && p.mill_name.toLowerCase().includes(search.toLowerCase())) ||
                         (p.bill_no && p.bill_no.toLowerCase().includes(search.toLowerCase())) ||
                         (p.division && p.division.toLowerCase().includes(search.toLowerCase()));
-    const matchStatus = statusFilter === 'All' || p.status === statusFilter;
-    const matchMill = millFilter === 'All' || p.mill_name === millFilter;
-    return matchSearch && matchStatus && matchMill;
-  });
-
-  const filteredPayments = payments.filter(p => {
-    const matchSearch = (p.farmer && p.farmer.toLowerCase().includes(search.toLowerCase())) ||
-                        (p.mill_name && p.mill_name.toLowerCase().includes(search.toLowerCase())) ||
-                        (p.bill_no && p.bill_no.toLowerCase().includes(search.toLowerCase())) ||
-                        (p.village && p.village.toLowerCase().includes(search.toLowerCase()));
     const matchStatus = statusFilter === 'All' || p.status === statusFilter;
     const matchMill = millFilter === 'All' || p.mill_name === millFilter;
     return matchSearch && matchStatus && matchMill;
@@ -301,6 +444,15 @@ export default function Payments() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button 
+            className="btn btn-secondary" 
+            onClick={handleOpenUpload}
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', borderColor: 'var(--primary)', color: 'var(--primary)' }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            📤 Upload Statement PDF / Slip
+          </button>
+
           <button className="btn btn-primary" onClick={handleOpenAdd}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
             + Add Mill Statement / Bill
@@ -382,7 +534,7 @@ export default function Payments() {
           <div className="stat-value" style={{ color: 'var(--warning)' }}>
             {formatCurrency(totalDeductions)}
           </div>
-          <div className="stat-desc">Diesel, advance recoveries & deductions</div>
+          <div className="stat-desc">Diesel & advance recovery deductions</div>
         </div>
 
         <div className="stat-card" style={{ borderColor: 'rgba(56, 161, 105, 0.4)', background: 'linear-gradient(180deg, var(--bg-card) 0%, rgba(56, 161, 105, 0.05) 100%)' }}>
@@ -452,6 +604,7 @@ export default function Payments() {
                   <th style={{ textAlign: 'right' }}>Deductions (B)</th>
                   <th style={{ textAlign: 'right' }}>Net Bank Payout (A-B)</th>
                   <th>Bank Settlement</th>
+                  <th>Document</th>
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -508,6 +661,17 @@ export default function Payments() {
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                         {p.bank_details || 'SBI A/c 42805345508'}
                       </div>
+                    </td>
+
+                    <td>
+                      {p.pdf_url ? (
+                        <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.7rem' }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+                          PDF Attached
+                        </span>
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Digital Slip</span>
+                      )}
                     </td>
 
                     <td>
@@ -600,15 +764,243 @@ export default function Payments() {
         </div>
       )}
 
+      {/* DEDICATED UPLOAD STATEMENT PDF MODAL */}
+      {showUploadModal && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <div>
+                <h3 className="modal-title">Upload Sugar Mill Statement (PDF / Slip)</h3>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                  Upload official statement PDF or photo scan received from Bannari Amman Sugars
+                </p>
+              </div>
+              <button className="modal-close" onClick={() => setShowUploadModal(false)}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleUploadSubmit}>
+              <div className="modal-body">
+                {/* File Upload Zone */}
+                <div style={{
+                  border: '2px dashed var(--primary)',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '1.5rem',
+                  textAlign: 'center',
+                  background: 'rgba(45, 106, 79, 0.04)',
+                  marginBottom: '1.25rem',
+                  cursor: 'pointer'
+                }}>
+                  <input 
+                    type="file" 
+                    id="statement-pdf-input"
+                    accept=".pdf,image/*" 
+                    onChange={handleQuickPdfUpload}
+                    style={{ display: 'none' }}
+                  />
+                  <label htmlFor="statement-pdf-input" style={{ cursor: 'pointer', display: 'block' }}>
+                    <div style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '50%',
+                      background: 'rgba(45, 106, 79, 0.1)',
+                      color: 'var(--primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 0.75rem'
+                    }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                    </div>
+                    {uploadData.pdf_name ? (
+                      <div>
+                        <div style={{ fontWeight: '700', color: 'var(--primary)' }}>{uploadData.pdf_name}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--success)', marginTop: '0.25rem' }}>✓ File Attached Successfully (Click to replace)</div>
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>Click or Drag & Drop Statement PDF / Slip Scan</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Supports .pdf, .jpg, .png (Max 15MB)</div>
+                      </div>
+                    )}
+                  </label>
+                </div>
+
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Bill No. *</label>
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      placeholder="e.g. 415/36 or 420/38"
+                      value={uploadData.bill_no}
+                      onChange={(e) => setUploadData({ ...uploadData, bill_no: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Statement Date *</label>
+                    <input 
+                      type="date" 
+                      className="form-control" 
+                      value={uploadData.date}
+                      onChange={(e) => setUploadData({ ...uploadData, date: e.target.value })}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Period From</label>
+                    <input 
+                      type="date" 
+                      className="form-control" 
+                      value={uploadData.period_from}
+                      onChange={(e) => setUploadData({ ...uploadData, period_from: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Period To</label>
+                    <input 
+                      type="date" 
+                      className="form-control" 
+                      value={uploadData.period_to}
+                      onChange={(e) => setUploadData({ ...uploadData, period_to: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Total Cane Quantity (Tons)</label>
+                    <input 
+                      type="number" 
+                      step="0.001" 
+                      className="form-control" 
+                      placeholder="e.g. 183.675"
+                      value={uploadData.tons}
+                      onChange={(e) => handleUploadCalcChange(e.target.value, uploadData.rate_per_ton, uploadData.deductions)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Harvest Rate / Ton (₹)</label>
+                    <input 
+                      type="number" 
+                      className="form-control" 
+                      value={uploadData.rate_per_ton}
+                      onChange={(e) => handleUploadCalcChange(uploadData.tons, e.target.value, uploadData.deductions)}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Gross Amount Payable (A) (₹) *</label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      className="form-control" 
+                      placeholder="e.g. 110205.00"
+                      value={uploadData.gross_amount}
+                      onChange={(e) => setUploadData({ ...uploadData, gross_amount: e.target.value })}
+                      required
+                      style={{ fontWeight: '700' }}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Mill Deductions (B) (₹)</label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      className="form-control" 
+                      placeholder="e.g. 60816.00"
+                      value={uploadData.deductions}
+                      onChange={(e) => handleUploadCalcChange(uploadData.tons, uploadData.rate_per_ton, e.target.value)}
+                      style={{ color: 'var(--warning)', fontWeight: '600' }}
+                    />
+                  </div>
+
+                  <div className="form-group form-group-full">
+                    <label className="form-label">Net Bank Payout Received (A - B) (₹)</label>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      className="form-control" 
+                      value={uploadData.net_payable}
+                      onChange={(e) => setUploadData({ ...uploadData, net_payable: e.target.value })}
+                      style={{ color: 'var(--success)', fontWeight: '800', fontSize: '1.125rem' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowUploadModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                  Save & Attach Statement
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* OFFICIAL BANNARI AMMAN SUGARS STATEMENT MODAL */}
       {showStatementModal && selectedStatement && (
         <div className="modal-overlay print-modal-overlay">
-          <div className="modal-content print-invoice-card" style={{ maxWidth: '850px', background: '#fff', color: '#111', padding: '2rem' }}>
-            <div className="modal-header no-print" style={{ borderBottom: '1px solid #eee', paddingBottom: '0.75rem', marginBottom: '1.5rem' }}>
-              <h3 className="modal-title" style={{ color: '#111' }}>
-                Official Mill Statement: Bill #{selectedStatement.bill_no || 'N/A'}
-              </h3>
+          <div className="modal-content print-invoice-card" style={{ maxWidth: '880px', background: '#fff', color: '#111', padding: '2rem' }}>
+            <div className="modal-header no-print" style={{ borderBottom: '1px solid #eee', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <h3 className="modal-title" style={{ color: '#111' }}>
+                  Bill #{selectedStatement.bill_no || 'N/A'}
+                </h3>
+                {selectedStatement.pdf_url && (
+                  <div style={{ display: 'flex', gap: '0.35rem', background: '#f0f0f0', padding: '0.2rem', borderRadius: '6px' }}>
+                    <button 
+                      type="button"
+                      className="btn"
+                      onClick={() => setStatementViewMode('digital')}
+                      style={{
+                        padding: '0.25rem 0.65rem',
+                        fontSize: '0.75rem',
+                        background: statementViewMode === 'digital' ? '#1b4332' : 'transparent',
+                        color: statementViewMode === 'digital' ? '#fff' : '#444',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      📑 Digital Slip
+                    </button>
+                    <button 
+                      type="button"
+                      className="btn"
+                      onClick={() => setStatementViewMode('original')}
+                      style={{
+                        padding: '0.25rem 0.65rem',
+                        fontSize: '0.75rem',
+                        background: statementViewMode === 'original' ? '#1b4332' : 'transparent',
+                        color: statementViewMode === 'original' ? '#fff' : '#444',
+                        borderRadius: '4px'
+                      }}
+                    >
+                      📎 Attached PDF / Scan
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div style={{ display: 'flex', gap: '0.5rem' }}>
+                {selectedStatement.pdf_url && (
+                  <a 
+                    href={selectedStatement.pdf_url} 
+                    download={`Bannari_Statement_${selectedStatement.bill_no || 'bill'}.pdf`}
+                    className="btn btn-secondary"
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#111', borderColor: '#ccc' }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+                    Download PDF
+                  </a>
+                )}
                 <button 
                   className="btn btn-primary" 
                   onClick={() => window.print()}
@@ -623,145 +1015,156 @@ export default function Payments() {
               </div>
             </div>
 
-            {/* PRINT AREA: Replicates Bannari Amman Sugars Slip */}
-            <div className="print-area" style={{ fontFamily: 'monospace, Arial, sans-serif', color: '#000' }}>
-              {/* Mill Header */}
-              <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
-                <div style={{ fontSize: '1.25rem', fontWeight: '900', letterSpacing: '0.5px' }}>
-                  BANNARI AMMAN SUGARS LIMITED, TIRUKOILUR
-                </div>
-                <div style={{ fontSize: '0.75rem', marginTop: '0.1rem' }}>
-                  CIN: L15421TZ1983PLC001358 • Website: www.bannari.com
-                </div>
-                <div style={{ fontSize: '0.95rem', fontWeight: '800', marginTop: '0.35rem', textTransform: 'uppercase' }}>
-                  HARVESTING CHARGES STATEMENT FOR THE PERIOD
-                </div>
+            {/* IF ATTACHED PDF VIEW MODE */}
+            {statementViewMode === 'original' && selectedStatement.pdf_url ? (
+              <div style={{ height: '70vh', background: '#333', borderRadius: '8px', overflow: 'hidden' }}>
+                <iframe 
+                  src={selectedStatement.pdf_url} 
+                  title={`Statement ${selectedStatement.bill_no}`}
+                  style={{ width: '100%', height: '100%', border: 'none' }}
+                />
               </div>
-
-              {/* Gang Leader & Bill Period Details */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.5rem', fontSize: '0.8125rem', borderBottom: '1px solid #000', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
-                <div>
-                  <div><strong>Gang Leader No. :</strong> {selectedStatement.gang_leader_no || 'H038'}</div>
-                  <div><strong>Gang Leader Name:</strong> {selectedStatement.gang_leader_name || 'SIVAKOZHUNDHU'}</div>
-                  <div><strong>Division :</strong> {selectedStatement.division || 'ANDAMPALLAM'}</div>
+            ) : (
+              /* DIGITAL REPLICA OF BANNARI AMMAN SUGARS SLIP */
+              <div className="print-area" style={{ fontFamily: 'monospace, Arial, sans-serif', color: '#000' }}>
+                {/* Mill Header */}
+                <div style={{ textAlign: 'center', borderBottom: '2px solid #000', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
+                  <div style={{ fontSize: '1.25rem', fontWeight: '900', letterSpacing: '0.5px' }}>
+                    BANNARI AMMAN SUGARS LIMITED, TIRUKOILUR
+                  </div>
+                  <div style={{ fontSize: '0.75rem', marginTop: '0.1rem' }}>
+                    CIN: L15421TZ1983PLC001358 • Website: www.bannari.com
+                  </div>
+                  <div style={{ fontSize: '0.95rem', fontWeight: '800', marginTop: '0.35rem', textTransform: 'uppercase' }}>
+                    HARVESTING CHARGES STATEMENT FOR THE PERIOD
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
+
+                {/* Gang Leader & Bill Period Details */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '0.5rem', fontSize: '0.8125rem', borderBottom: '1px solid #000', paddingBottom: '0.5rem', marginBottom: '0.75rem' }}>
                   <div>
-                    <strong>FROM:</strong> {selectedStatement.period_from ? formatDate(selectedStatement.period_from) : '—'} &nbsp;
-                    <strong>TO:</strong> {selectedStatement.period_to ? formatDate(selectedStatement.period_to) : '—'}
+                    <div><strong>Gang Leader No. :</strong> {selectedStatement.gang_leader_no || 'H038'}</div>
+                    <div><strong>Gang Leader Name:</strong> {selectedStatement.gang_leader_name || 'SIVAKOZHUNDHU'}</div>
+                    <div><strong>Division :</strong> {selectedStatement.division || 'ANDAMPALLAM'}</div>
                   </div>
-                  <div><strong>Run Date:</strong> {selectedStatement.date ? formatDate(selectedStatement.date) : '—'}</div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: '800' }}><strong>Bill No. :</strong> {selectedStatement.bill_no || 'N/A'}</div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div>
+                      <strong>FROM:</strong> {selectedStatement.period_from ? formatDate(selectedStatement.period_from) : '—'} &nbsp;
+                      <strong>TO:</strong> {selectedStatement.period_to ? formatDate(selectedStatement.period_to) : '—'}
+                    </div>
+                    <div><strong>Run Date:</strong> {selectedStatement.date ? formatDate(selectedStatement.date) : '—'}</div>
+                    <div style={{ fontSize: '0.9rem', fontWeight: '800' }}><strong>Bill No. :</strong> {selectedStatement.bill_no || 'N/A'}</div>
+                  </div>
                 </div>
-              </div>
 
-              {/* Items Table */}
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', marginBottom: '1rem', borderTop: '1px solid #000', borderBottom: '1px solid #000' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #000', background: '#fafafa' }}>
-                    <th style={{ padding: '0.35rem 0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>S.No.</th>
-                    <th style={{ padding: '0.35rem 0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>R.No.</th>
-                    <th style={{ padding: '0.35rem 0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>P.No.</th>
-                    <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left', borderRight: '1px solid #000' }}>R. Name</th>
-                    <th style={{ padding: '0.35rem 0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>Div.</th>
-                    <th style={{ padding: '0.35rem 0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>Date</th>
-                    <th style={{ padding: '0.35rem 0.25rem', textAlign: 'right', borderRight: '1px solid #000' }}>H.Rate</th>
-                    <th style={{ padding: '0.35rem 0.25rem', textAlign: 'right', borderRight: '1px solid #000' }}>Cane Qty</th>
-                    <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Amount (Rs.)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedStatement.items && selectedStatement.items.length > 0 ? (
-                    selectedStatement.items.map((it, idx) => (
-                      <tr key={idx} style={{ borderBottom: '1px dotted #ccc' }}>
-                        <td style={{ padding: '0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>{it.s_no || idx + 1}</td>
-                        <td style={{ padding: '0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>{it.r_no}</td>
-                        <td style={{ padding: '0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>{it.p_no}</td>
-                        <td style={{ padding: '0.25rem 0.5rem', textAlign: 'left', borderRight: '1px solid #000', fontWeight: 'bold' }}>{it.farmer}</td>
-                        <td style={{ padding: '0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>{it.div || '010'}</td>
-                        <td style={{ padding: '0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>{it.date}</td>
-                        <td style={{ padding: '0.25rem', textAlign: 'right', borderRight: '1px solid #000' }}>{(it.rate || 600).toFixed(2)}</td>
-                        <td style={{ padding: '0.25rem', textAlign: 'right', borderRight: '1px solid #000', fontWeight: '600' }}>{parseFloat(it.tons).toFixed(3)}</td>
-                        <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: '700' }}>{parseFloat(it.amount).toFixed(2)}</td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td style={{ padding: '0.5rem', textAlign: 'center', borderRight: '1px solid #000' }}>1</td>
-                      <td style={{ padding: '0.5rem', textAlign: 'center', borderRight: '1px solid #000' }}>—</td>
-                      <td style={{ padding: '0.5rem', textAlign: 'center', borderRight: '1px solid #000' }}>—</td>
-                      <td style={{ padding: '0.5rem', textAlign: 'left', borderRight: '1px solid #000', fontWeight: 'bold' }}>{selectedStatement.farmer}</td>
-                      <td style={{ padding: '0.5rem', textAlign: 'center', borderRight: '1px solid #000' }}>{selectedStatement.division || '010'}</td>
-                      <td style={{ padding: '0.5rem', textAlign: 'center', borderRight: '1px solid #000' }}>{selectedStatement.date}</td>
-                      <td style={{ padding: '0.5rem', textAlign: 'right', borderRight: '1px solid #000' }}>{(selectedStatement.rate_per_ton || 600).toFixed(2)}</td>
-                      <td style={{ padding: '0.5rem', textAlign: 'right', borderRight: '1px solid #000' }}>{parseFloat(selectedStatement.tons || 0).toFixed(3)}</td>
-                      <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: '700' }}>{parseFloat(selectedStatement.gross_amount).toFixed(2)}</td>
+                {/* Items Table */}
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem', marginBottom: '1rem', borderTop: '1px solid #000', borderBottom: '1px solid #000' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #000', background: '#fafafa' }}>
+                      <th style={{ padding: '0.35rem 0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>S.No.</th>
+                      <th style={{ padding: '0.35rem 0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>R.No.</th>
+                      <th style={{ padding: '0.35rem 0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>P.No.</th>
+                      <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left', borderRight: '1px solid #000' }}>R. Name</th>
+                      <th style={{ padding: '0.35rem 0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>Div.</th>
+                      <th style={{ padding: '0.35rem 0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>Date</th>
+                      <th style={{ padding: '0.35rem 0.25rem', textAlign: 'right', borderRight: '1px solid #000' }}>H.Rate</th>
+                      <th style={{ padding: '0.35rem 0.25rem', textAlign: 'right', borderRight: '1px solid #000' }}>Cane Qty</th>
+                      <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Amount (Rs.)</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {selectedStatement.items && selectedStatement.items.length > 0 ? (
+                      selectedStatement.items.map((it, idx) => (
+                        <tr key={idx} style={{ borderBottom: '1px dotted #ccc' }}>
+                          <td style={{ padding: '0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>{it.s_no || idx + 1}</td>
+                          <td style={{ padding: '0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>{it.r_no}</td>
+                          <td style={{ padding: '0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>{it.p_no}</td>
+                          <td style={{ padding: '0.25rem 0.5rem', textAlign: 'left', borderRight: '1px solid #000', fontWeight: 'bold' }}>{it.farmer}</td>
+                          <td style={{ padding: '0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>{it.div || '010'}</td>
+                          <td style={{ padding: '0.25rem', textAlign: 'center', borderRight: '1px solid #000' }}>{it.date}</td>
+                          <td style={{ padding: '0.25rem', textAlign: 'right', borderRight: '1px solid #000' }}>{(it.rate || 600).toFixed(2)}</td>
+                          <td style={{ padding: '0.25rem', textAlign: 'right', borderRight: '1px solid #000', fontWeight: '600' }}>{parseFloat(it.tons).toFixed(3)}</td>
+                          <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: '700' }}>{parseFloat(it.amount).toFixed(2)}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td style={{ padding: '0.5rem', textAlign: 'center', borderRight: '1px solid #000' }}>1</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center', borderRight: '1px solid #000' }}>—</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center', borderRight: '1px solid #000' }}>—</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'left', borderRight: '1px solid #000', fontWeight: 'bold' }}>{selectedStatement.farmer}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center', borderRight: '1px solid #000' }}>{selectedStatement.division || '010'}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'center', borderRight: '1px solid #000' }}>{selectedStatement.date}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'right', borderRight: '1px solid #000' }}>{(selectedStatement.rate_per_ton || 600).toFixed(2)}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'right', borderRight: '1px solid #000' }}>{parseFloat(selectedStatement.tons || 0).toFixed(3)}</td>
+                        <td style={{ padding: '0.5rem', textAlign: 'right', fontWeight: '700' }}>{parseFloat(selectedStatement.gross_amount).toFixed(2)}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
 
-              {/* Settlement Two-Box Layout (Exact match to real physical bill) */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.8rem', border: '1px solid #000', padding: '0.75rem', marginBottom: '1.25rem' }}>
-                {/* Left Box: Deductions & Bank SB No */}
-                <div style={{ borderRight: '1px solid #000', paddingRight: '0.75rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                    <span>Advance Recovery Amt:</span>
-                    <span>NIL</span>
+                {/* Settlement Two-Box Layout (Exact match to real physical bill) */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.8rem', border: '1px solid #000', padding: '0.75rem', marginBottom: '1.25rem' }}>
+                  {/* Left Box: Deductions & Bank SB No */}
+                  <div style={{ borderRight: '1px solid #000', paddingRight: '0.75rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                      <span>Advance Recovery Amt:</span>
+                      <span>NIL</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                      <span>Other Deductions :</span>
+                      <span>{parseFloat(selectedStatement.deductions || 0).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid #000', paddingTop: '0.25rem', marginTop: '0.25rem' }}>
+                      <span>Total Deductions (B) :</span>
+                      <span>{parseFloat(selectedStatement.deductions || 0).toFixed(2)}</span>
+                    </div>
+                    <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', background: '#f5f5f5', padding: '0.35rem', border: '1px dashed #666' }}>
+                      <div><strong>Ret. Amt:</strong> NIL</div>
+                      <div><strong>B.Code / S.B. No :</strong> <span style={{ fontWeight: 'bold' }}>{selectedStatement.bank_details || 'SBI0005-42805345508'}</span></div>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                    <span>Other Deductions :</span>
-                    <span>{parseFloat(selectedStatement.deductions || 0).toFixed(2)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid #000', paddingTop: '0.25rem', marginTop: '0.25rem' }}>
-                    <span>Total Deductions (B) :</span>
-                    <span>{parseFloat(selectedStatement.deductions || 0).toFixed(2)}</span>
-                  </div>
-                  <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', background: '#f5f5f5', padding: '0.35rem', border: '1px dashed #666' }}>
-                    <div><strong>Ret. Amt:</strong> NIL</div>
-                    <div><strong>B.Code / S.B. No :</strong> <span style={{ fontWeight: 'bold' }}>{selectedStatement.bank_details || 'SBI0005-42805345508'}</span></div>
+
+                  {/* Right Box: Payable & Net Calculation */}
+                  <div style={{ paddingLeft: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
+                      <span>Total Cane Qty :</span>
+                      <strong>{parseFloat(selectedStatement.tons || 0).toFixed(3)} Tons</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid #000', paddingTop: '0.25rem' }}>
+                      <span>Total Amount Payable (A) :</span>
+                      <span>{parseFloat(selectedStatement.gross_amount || 0).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: '#666', marginTop: '0.25rem' }}>
+                      <span>Less Total Deductions (B) :</span>
+                      <span>- {parseFloat(selectedStatement.deductions || 0).toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '900', fontSize: '1rem', borderTop: '2px solid #000', borderBottom: '2px solid #000', padding: '0.35rem 0', marginTop: '0.5rem' }}>
+                      <span>NET AMOUNT PAYABLE (A) - (B):</span>
+                      <span>₹ {parseFloat(selectedStatement.net_payable || selectedStatement.advance || 0).toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Right Box: Payable & Net Calculation */}
-                <div style={{ paddingLeft: '0.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}>
-                    <span>Total Cane Qty :</span>
-                    <strong>{parseFloat(selectedStatement.tons || 0).toFixed(3)} Tons</strong>
+                {/* Footer Signatures */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '2rem', fontSize: '0.8125rem' }}>
+                  <div style={{ textAlign: 'center', width: '180px' }}>
+                    <div style={{ borderTop: '1px solid #000', paddingTop: '0.25rem' }}>
+                      Prepared by
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', borderTop: '1px solid #000', paddingTop: '0.25rem' }}>
-                    <span>Total Amount Payable (A) :</span>
-                    <span>{parseFloat(selectedStatement.gross_amount || 0).toFixed(2)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#666', marginTop: '0.25rem' }}>
-                    <span>Less Total Deductions (B) :</span>
-                    <span>- {parseFloat(selectedStatement.deductions || 0).toFixed(2)}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '900', fontSize: '1rem', borderTop: '2px solid #000', borderBottom: '2px solid #000', padding: '0.35rem 0', marginTop: '0.5rem' }}>
-                    <span>NET AMOUNT PAYABLE (A) - (B):</span>
-                    <span>₹ {parseFloat(selectedStatement.net_payable || selectedStatement.advance || 0).toFixed(2)}</span>
+
+                  <div style={{ textAlign: 'center', width: '220px' }}>
+                    <div style={{ fontStyle: 'italic', marginBottom: '0.25rem', fontSize: '0.75rem', color: '#2d6a4f' }}>
+                      Received Payment thru Bank
+                    </div>
+                    <div style={{ borderTop: '1px solid #000', paddingTop: '0.25rem', fontWeight: 'bold' }}>
+                      Gang Leader (Sivakozhundhu)
+                    </div>
                   </div>
                 </div>
               </div>
-
-              {/* Footer Signatures */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '2rem', fontSize: '0.8125rem' }}>
-                <div style={{ textAlign: 'center', width: '180px' }}>
-                  <div style={{ borderTop: '1px solid #000', paddingTop: '0.25rem' }}>
-                    Prepared by
-                  </div>
-                </div>
-
-                <div style={{ textAlign: 'center', width: '220px' }}>
-                  <div style={{ fontStyle: 'italic', marginBottom: '0.25rem', fontSize: '0.75rem', color: '#2d6a4f' }}>
-                    Received Payment thru Bank
-                  </div>
-                  <div style={{ borderTop: '1px solid #000', paddingTop: '0.25rem', fontWeight: 'bold' }}>
-                    Gang Leader (Sivakozhundhu)
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
 
             <div className="modal-footer no-print" style={{ borderTop: '1px solid #eee', marginTop: '1.5rem', paddingTop: '1rem' }}>
               <button type="button" className="btn btn-secondary" onClick={() => setShowStatementModal(false)}>Close</button>
@@ -1018,6 +1421,29 @@ export default function Payments() {
                           style={{ color: 'var(--success)', fontWeight: '800' }}
                         />
                       </div>
+                    </div>
+                  </div>
+
+                  {/* Attachment Section */}
+                  <div className="form-group form-group-full">
+                    <label className="form-label">Attach Statement Document (PDF or Scan Photo)</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <input 
+                        type="file" 
+                        id="edit-form-pdf-input"
+                        accept=".pdf,image/*" 
+                        onChange={handleFormPdfUpload}
+                        style={{ display: 'none' }}
+                      />
+                      <label htmlFor="edit-form-pdf-input" className="btn btn-secondary" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+                        Choose PDF / Image File
+                      </label>
+                      {formData.pdf_name && (
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--primary)', fontWeight: '600' }}>
+                          ✓ {formData.pdf_name}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
