@@ -193,8 +193,8 @@ export const BANNARI_SUGARS_STATEMENTS = [
     farmer: 'SADIYANDI C, BHARATHI E, SELVI E, ILAYAPERUMAL R (7 Cuts)',
     items: [
       { s_no: 1, r_no: '050309', p_no: 'MPU0111', farmer: 'SADIYANDI C', div: '010', date: '2026-08-01', rate: 600, tons: 21.085, amount: 12651.00 },
-      { s_no: 2, r_no: '084378', p_no: 'MPU0110', farmer: 'BHARATHI E', div: '010', date: '2026-08-01', rate: 600, tons: 17.545, amount: 10527.00 },
-      { s_no: 3, r_no: '084330', p_no: 'MPU0124', farmer: 'SELVI E', div: '010', date: '2026-08-01', rate: 600, tons: 17.080, amount: 10248.00 },
+      { s_no: 2, r_no: '084330', p_no: 'MPU0124', farmer: 'SELVI E', div: '010', date: '2026-08-01', rate: 600, tons: 17.545, amount: 10527.00 },
+      { s_no: 3, r_no: '084378', p_no: 'MPU0110', farmer: 'BHARATHI E', div: '010', date: '2026-08-01', rate: 600, tons: 17.080, amount: 10248.00 },
       { s_no: 4, r_no: '084330', p_no: 'MPU0124', farmer: 'SELVI E', div: '010', date: '2026-08-02', rate: 600, tons: 20.370, amount: 12222.00 },
       { s_no: 5, r_no: '084297', p_no: 'MPU0108', farmer: 'ILAYAPERUMAL R', div: '010', date: '2026-08-02', rate: 600, tons: 7.590, amount: 4554.00 },
       { s_no: 6, r_no: '084297', p_no: 'MPU0108', farmer: 'ILAYAPERUMAL R', div: '010', date: '2026-08-02', rate: 600, tons: 22.675, amount: 13605.00 },
@@ -271,10 +271,7 @@ export const BANNARI_SUGARS_STATEMENTS = [
 
 export async function ensureBannariStatementsSeeded() {
   for (const stmt of BANNARI_SUGARS_STATEMENTS) {
-    const existing = await db.payments.get(stmt.id);
-    if (!existing) {
-      await db.payments.put(stmt);
-    }
+    await db.payments.put(stmt);
   }
 }
 

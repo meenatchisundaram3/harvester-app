@@ -56,12 +56,9 @@ export default function Payments() {
   }, []);
 
   const loadPayments = async () => {
-    // Ensure default Bannari Statements are present
+    // Ensure verified Bannari Statements are updated in DB
     for (const stmt of BANNARI_SUGARS_STATEMENTS) {
-      const exists = await db.payments.get(stmt.id);
-      if (!exists) {
-        await db.payments.put(stmt);
-      }
+      await db.payments.put(stmt);
     }
     const list = await db.payments.toArray();
     list.sort((a, b) => new Date(b.date || b.period_to) - new Date(a.date || a.period_to));
@@ -78,8 +75,9 @@ export default function Payments() {
   const totalSettled = payments.reduce((sum, p) => sum + (parseFloat(p.advance || p.net_payable) || 0), 0);
   const totalOutstanding = payments.reduce((sum, p) => sum + (parseFloat(p.balance) || 0), 0);
 
-  // Statements list (items with bill_no or multiple cuts) vs individual invoices
+  // Statements list (items with bill_no or multiple cuts) sorted in order Slip 1 -> Slip 4
   const statementsList = payments.filter(p => p.bill_no || (p.items && p.items.length > 0));
+  statementsList.sort((a, b) => new Date(a.period_from || a.date) - new Date(b.period_from || b.date));
   const individualInvoices = payments.filter(p => !p.bill_no && (!p.items || p.items.length === 0));
 
   // Flattened cuts from all statements + individual invoices
@@ -264,6 +262,16 @@ export default function Payments() {
   };
 
   // Filter payments
+  const filteredStatements = statementsList.filter(p => {
+    const matchSearch = (p.farmer && p.farmer.toLowerCase().includes(search.toLowerCase())) ||
+                        (p.mill_name && p.mill_name.toLowerCase().includes(search.toLowerCase())) ||
+                        (p.bill_no && p.bill_no.toLowerCase().includes(search.toLowerCase())) ||
+                        (p.division && p.division.toLowerCase().includes(search.toLowerCase()));
+    const matchStatus = statusFilter === 'All' || p.status === statusFilter;
+    const matchMill = millFilter === 'All' || p.mill_name === millFilter;
+    return matchSearch && matchStatus && matchMill;
+  });
+
   const filteredPayments = payments.filter(p => {
     const matchSearch = (p.farmer && p.farmer.toLowerCase().includes(search.toLowerCase())) ||
                         (p.mill_name && p.mill_name.toLowerCase().includes(search.toLowerCase())) ||
@@ -449,13 +457,18 @@ export default function Payments() {
                 </tr>
               </thead>
               <tbody>
-                {filteredPayments.map(p => (
+                {filteredStatements.map((p, idx) => (
                   <tr key={p.id} style={{ background: p.bill_no ? 'rgba(45, 106, 79, 0.02)' : 'transparent' }}>
                     <td>
-                      <div style={{ fontWeight: '700', fontSize: '0.9375rem', color: 'var(--primary)' }}>
-                        Bill #{p.bill_no || 'INV-' + p.id.substring(0, 6)}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <span className="badge badge-success" style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem' }}>
+                          Slip #{idx + 1}
+                        </span>
+                        <div style={{ fontWeight: '700', fontSize: '0.9375rem', color: 'var(--primary)' }}>
+                          Bill #{p.bill_no || 'INV-' + p.id.substring(0, 6)}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
                         {p.period_from && p.period_to ? (
                           <span>{formatDate(p.period_from)} → {formatDate(p.period_to)}</span>
                         ) : (
